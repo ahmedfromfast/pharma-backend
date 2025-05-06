@@ -63,10 +63,11 @@ exports.uploadAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
     const filename = req.file.filename;
-    console.log(filename);
+
     await User.findByIdAndUpdate(userId, {
       'profile.avatar': filename
     });
+
     res.status(200).json({
       message: 'Avatar uploaded successfully',
       filename: filename,

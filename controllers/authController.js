@@ -41,9 +41,9 @@ exports.login = async (req, res) => {
         if (!user) {
             return res.status(400).json({ message: 'Invalid email or password' });
         }
-        if (!user.isVerified) {
-            return res.status(400).json({ message: 'Please verify your email before logging in' });
-        }
+        // if (!user.isVerified) {
+        //     return res.status(400).json({ message: 'Please verify your email before logging in' });
+        // }
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid email or password' });
@@ -53,7 +53,8 @@ exports.login = async (req, res) => {
         res.status(200).json({
             message: 'Login successful', token,
             userId: user._id,
-            role: user.role
+            role: user.role,
+            isVerified: user.isVerified
         });
     }
     catch (error) {
@@ -149,7 +150,7 @@ exports.resetPassword = async (req, res) => {
         }
         user.password = newPassword;
         user.resetCode = undefined;  // Clear the reset code after successful use
-        user.resetCodeExpiration = undefined;  // Clear the expiration time
+        user.resetCodeExpires = undefined;  // Clear the expiration time
         await user.save();
         res.status(200).json({ message: 'Password reset successfully' });
     } catch (error) {
@@ -177,9 +178,9 @@ exports.changePassword = async (req, res) => {
 };
 exports.verifyResetCde = async (req, res) => {
     try {
-        const { verificationCode } = req.body;
-
-        const user = await User.findOne({ verificationCode });
+        const { email, resetCode } = req.body;
+        console.log(resetCode)
+        const user = await User.findOne({ resetCode });
         if (!user) {
             return res.status(400).json({ message: 'User not found' });
         }
@@ -192,3 +193,12 @@ exports.verifyResetCde = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 }
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({ isVerified: true });
+        res.status(200).json(users);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Failed to fetch all orders' });
+    }
+};

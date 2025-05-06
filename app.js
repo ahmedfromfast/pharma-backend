@@ -7,7 +7,6 @@ require('dotenv').config(); // Load env vars
 //------------------------- Local Modules -------------------------//
 const authRoutes = require('./routes/authRoutes'); 
 const appointmentRoutes = require('./routes/aptRoutes');
-const reportRoutes = require('./routes/repRoutes');
 const medRoutes = require('./routes/medRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -35,7 +34,6 @@ app.use('/api/profile/avatars', express.static('uploads/avatars'));
 //------------------------- API Routes -------------------------//
 app.use('/api/auth', authRoutes);
 app.use('/api/appointment', appointmentRoutes);
-app.use('/api/reports', reportRoutes); 
 app.use('/api/medicines', medRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);

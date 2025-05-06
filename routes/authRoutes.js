@@ -10,5 +10,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.post('/resend-code', authController.resendVerificationCode);
 router.post('/change-password', authMiddleware, authController.changePassword);
+router.post('/verif-reset-code',authController.verifyResetCde)
+router.get('/users', authController.getAllUsers);
 
 module.exports = router;
