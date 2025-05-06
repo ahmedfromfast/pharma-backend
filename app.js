@@ -18,7 +18,7 @@ const app = express();
 
 //------------------------- Middleware -------------------------//
 const corsOptions = {
-  origin: ['http://localhost:8081','http://localhost:5173'], 
+  origin: ['http://localhost:8081','http://localhost:5173','https://pharma-care-gamma.vercel.app','https://pharma-care-gamma.vercel.app/'], 
   credentials: true,
   methods: ['GET', 'POST', 'PUT',"PATCH", 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
