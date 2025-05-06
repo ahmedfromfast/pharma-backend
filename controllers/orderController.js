@@ -102,20 +102,35 @@ exports.confirmOrder = async (req, res) => {
     const { orderId } = req.params;
 
     try {
-        console.log("Affan",orderId)
-      const updatedOrder = await Order.findByIdAndUpdate(
-        orderId,
-        { orderstatus: 'Confirmed' },
-        { new: true }
-      );
-  
-      if (!updatedOrder) {
-        return res.status(404).json({ message: 'Order not found' });
-      }
-  
-      res.status(200).json({ message: 'Order confirmed', order: updatedOrder });
+        const order = await Order.findById(orderId).populate('items.medicineId');
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Avoid double confirmation/stock update
+        if (order.orderstatus === 'Confirmed') {
+            return res.status(400).json({ message: 'Order is already confirmed' });
+        }
+
+        // Update medicine stock
+        for (let item of order.items) {
+
+            const medicine = await Medicine.findById(item.medicineId._id);
+            console.log(medicine)
+            if (medicine) {
+                medicine.stock = Math.max(0, medicine.stock - item.quantity);
+                await medicine.save();
+            }
+        }
+
+        // Update order status
+        order.orderstatus = 'Confirmed';
+        await order.save();
+
+        res.status(200).json({ message: 'Order confirmed and stock updated', order });
     } catch (error) {
-      console.error('Error confirming order:', error);
-      res.status(500).json({ message: 'Failed to confirm order' });
+        console.error('Error confirming order:', error);
+        res.status(500).json({ message: 'Failed to confirm order' });
     }
-  };
+};
