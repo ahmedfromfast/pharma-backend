@@ -101,6 +101,7 @@ exports.updateAppointment = async (req, res) => {
         const updatedAppointment = await Appointment.findByIdAndUpdate(
             id,
             { appointmentDate: appointmentDateTime },
+            slot,
             { new: true }
         );
 
