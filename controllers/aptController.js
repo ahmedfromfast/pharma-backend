@@ -1,30 +1,62 @@
 const Appointment = require('../models/appointment');
 const Doc = require("../models/doctor")
 const User = require('../models/user');
-
+const generateTimeSlots = require('../utils/slots');
 exports.createAppointment = async (req, res) => {
-    try {
-        const { patientId, doctorId, appointmentDate, status } = req.body;
+    const { patientId, doctorId, appointmentDate, slot } = req.body;
 
-        console.log(patientId, doctorId, appointmentDate, status)
-        if (!appointmentDate || isNaN(new Date(appointmentDate))) {
-            return res.status(400).json({ message: 'Invalid appointment date' });
+    if (!appointmentDate || !slot) {
+        return res.status(400).json({ message: 'Date and slot are required' });
+    }
+
+    try {
+        const [hour, minute] = slot.split(':');
+        const appointmentDateTime = new Date(appointmentDate);
+        appointmentDateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+
+
+        const existing = await Appointment.findOne({
+            doctorId,
+            appointmentDate: appointmentDateTime,
+            status: { $ne: 'cancelled' }
+        });
+
+        if (existing) {
+            return res.status(409).json({ message: 'Slot already booked' });
         }
 
         const newAppointment = new Appointment({
             patientId,
             doctorId,
-            appointmentDate,
-            status: status || 'pending'
+            appointmentDate: appointmentDateTime, // ✅ Use the correct full datetime
+            slot
         });
 
-        console.log(newAppointment)
         await newAppointment.save();
-        res.status(201).json({ message: 'Appointment has been created', appointment: newAppointment });
+
+        res.status(201).json({ message: 'Appointment created', appointment: newAppointment });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Appointment creation error:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
+};
+
+exports.getAvailableSlots = async (req, res) => {
+
+    const { userId, date } = req.query; // date = '2025-05-06'
+    const doctor = await Doc.findOne({ userId });
+    const selectedDate = new Date(date);
+    const startOfDay = new Date(selectedDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
+
+    const appointments = await Appointment.find({ doctorId: doctor._id, appointmentDate: { $gte: startOfDay, $lte: endOfDay }, });
+    const allSlots = generateTimeSlots(); // Default 09:00–17:00
+
+
+    const bookedSlots = appointments.map(app => app.slot);
+    const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
+
+    res.json({ availableSlots });
 };
 
 exports.getAllAppointments = async (req, res) => {
@@ -54,15 +86,21 @@ exports.getAppointmentById = async (req, res) => {
 exports.updateAppointment = async (req, res) => {
     try {
         const { id } = req.params;
-        const { appointmentDate } = req.body;
+        const { appointmentDate, slot } = req.body;
 
-        if (appointmentDate && isNaN(new Date(appointmentDate))) {
-            return res.status(400).json({ message: 'Invalid appointment date' });
+        if (!appointmentDate || !slot) {
+            return res.status(400).json({ message: 'Date and slot are required' });
         }
+
+        const [hour, minute] = slot.split(':');
+        const appointmentDateTime = new Date(appointmentDate);
+        appointmentDateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+
+
 
         const updatedAppointment = await Appointment.findByIdAndUpdate(
             id,
-            { appointmentDate },
+            { appointmentDate: appointmentDateTime },
             { new: true }
         );
 
@@ -82,7 +120,6 @@ exports.deleteAppointment = async (req, res) => {
         const { id } = req.params;
         const status = 'cancelled';
 
-        console.log(id);
         const updatedAppointment = await Appointment.findByIdAndUpdate(
             id,
             { status },
@@ -100,7 +137,6 @@ exports.deleteAppointment = async (req, res) => {
     }
 };
 
-// Fetch all appointments for a specific doctor
 exports.getAppointmentsByDoctorId = async (req, res) => {
     const { userId } = req.params;
 
@@ -109,7 +145,6 @@ exports.getAppointmentsByDoctorId = async (req, res) => {
         if (!doctor) {
             return res.status(404).json({ message: 'Doctor not found for this user' });
         }
-        console.log("user Data : ", doctor)
         const appointments = await Appointment.find({ doctorId: doctor._id, status: 'pending' })
             .populate('patientId');
 
@@ -122,28 +157,6 @@ exports.getAppointmentsByDoctorId = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
-// exports.getAppointmentsByUserId = async (req, res) => {
-//     const { userId } = req.params;
-
-//     try {
-//         const user = await User.findById(userId);
-//         if (!user) {
-//             return res.status(404).json({ message: 'User not found for this ID' });
-//         }
-//         console.log("user Data : ",user)
-//         const appointments = await Appointment.find({ patientId: user._id }).populate('patientId');
-
-//         console.log(appointments)
-//         if (!appointments || appointments.length === 0) {
-//             return res.status(404).json({ message: 'No appointments found for this user' });
-//         }
-
-//         res.status(200).json(appointments);
-//     } catch (error) {
-//         console.error('Error fetching appointments:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// };
 exports.getAppointmentsByUserId = async (req, res) => {
     const { userId } = req.params;
 
@@ -153,7 +166,7 @@ exports.getAppointmentsByUserId = async (req, res) => {
             return res.status(404).json({ message: 'User not found for this ID' });
         }
 
-        const appointments = await Appointment.find({ patientId: user._id });
+        const appointments = await Appointment.find({ patientId: user._id, status: 'pending' });
 
         if (!appointments || appointments.length === 0) {
             return res.status(404).json({ message: 'No appointments found for this user' });
@@ -187,7 +200,6 @@ exports.getAppointmentsByUserId = async (req, res) => {
                 };
             })
         );
-        console.log(enrichedAppointments)
 
         res.status(200).json(enrichedAppointments);
     } catch (error) {
