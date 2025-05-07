@@ -118,13 +118,8 @@ exports.updateAppointment = async (req, res) => {
 exports.deleteAppointment = async (req, res) => {
     try {
         const { id } = req.params;
-        const status = 'cancelled';
 
-        const updatedAppointment = await Appointment.findByIdAndUpdate(
-            id,
-            { status },
-            { new: true }
-        );
+        const updatedAppointment = await Appointment.findByIdAndDelete(id);
 
         if (!updatedAppointment) {
             return res.status(404).json({ message: 'Appointment not found' });
