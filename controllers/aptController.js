@@ -181,6 +181,7 @@ exports.getAppointmentsByUserId = async (req, res) => {
                     }
                 }
 
+
                 return {
                     ...appointment.toObject(),
                     doctor: doctor
@@ -196,6 +197,7 @@ exports.getAppointmentsByUserId = async (req, res) => {
                 };
             })
         );
+        console.log(enrichedAppointments);
 
         res.status(200).json(enrichedAppointments);
     } catch (error) {
